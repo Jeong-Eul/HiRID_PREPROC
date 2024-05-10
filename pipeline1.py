@@ -7,7 +7,24 @@ import os
 from tqdm import tqdm
 import warnings
 pd.set_option('mode.chained_assignment',  None) 
-warnings.simplefilter(action='ignore', category=FutureWarning) 
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+#zip-해제: 데이터가 저장된 파일 내에서 실행하는 것이 좋음
+
+# import tarfile
+
+# tar_path_obs = '/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/observation_tables_csv.tar.gz'
+# output_path_obs ='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage'
+
+# with tarfile.open(tar_path_obs, 'r:gz') as tar:
+#     tar.extractall(path=output_path_obs)
+    
+    
+# tar_path = '/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/pharma_records_csv.tar.gz'
+# output_path ='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage'
+
+# with tarfile.open(tar_path, 'r:gz') as tar:
+#     tar.extractall(path=output_path) 
 
 
 local = '/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/'
