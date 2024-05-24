@@ -91,9 +91,10 @@ def data_preprocessing_pipeline(part_list, resample_mode):
         pharma = pd.read_csv(f'/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/pharma_records/csv/part-{parts}.csv', usecols=pharm_col)
         pharma = pharma[pharm_col]
 
+        new_pharma = pharma.rename(columns={'givenat':'datetime', 'pharmaid':'variableid', 'givendose': 'value'})
         
         # 변수 id 기준으로 데이터 양 줄이기
-        total = pd.concat([observation, pharma.rename(columns={'givenat':'datetime', 'pharmaid':'variableid'}, inplace=True)], axis = 0)
+        total = pd.concat([observation, new_pharma], axis = 0)
         selected = feature_selection(total, feature_list)
 
         # 환자 LOS 24시간 이상
