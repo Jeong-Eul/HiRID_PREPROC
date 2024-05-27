@@ -13,9 +13,9 @@ import pandasql as psql
 
 local = '/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/'
 
-col = ['Lactate','Milrinone','MAP','Fluid Bolus','Platelet count','ABPs','Bilirubin','FiO2','SpO2',
-      'Time_since_ICU_admission','Dobutamine','Temperature','PEEP','ABPd','Urine_output','Theophyllin',
-      'Antibiotics','INR','HR','pH','Creatinine','patientid','PaO2','Respiratory_rate']
+# col = ['Lactate','Milrinone','MAP','Fluid Bolus','Platelet count','ABPs','Bilirubin','FiO2','SpO2',
+#       'Time_since_ICU_admission','Dobutamine','Temperature','PEEP','ABPd','Urine_output','Theophyllin',
+#       'Antibiotics','INR','HR','pH','Creatinine','patientid','PaO2','Respiratory_rate']
 
 if not os.path.exists(local+"tabular_records/csv_imputation/"):
             os.makedirs(local+"tabular_records/csv_imputation/")
@@ -24,8 +24,9 @@ def Imputation(part_list):
     print("[ EXCUTING DATA IMPUTATION ]")
     for parts in part_list:
         print(f'Part {parts} processing......')
-        part = pd.read_csv(f'/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/csv_tab/part-{parts}.csv', usecols=col)
 
+        part = pd.read_csv(f'/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/csv_tab/part-{parts}.csv')
+            
         result = pd.DataFrame()
 
         for stay in part.patientid.unique():
@@ -81,13 +82,25 @@ def Imputation(part_list):
                 lab_result = pd.concat([lab_result, current_lab[[f'{lab_measure}', f'{lab_measure}_up']]], axis = 1).reset_index(drop=True)
             
             # pharmacuetical phase
-            phar_set = current_stay[['Antibiotics', 'Dobutamine', 'Milrinone', 'Theophyllin', 'Fluid Bolus']]
-            phar_set = phar_set.fillna(0).reset_index(drop=True)
+            # phar_set = current_stay[['Antibiotics', 'Dobutamine', 'Milrinone', 'Theophyllin', 'Fluid Bolus']]
+            # phar_set = phar_set.fillna(0).reset_index(drop=True)
             
-            phar_set['Antibiotics'][phar_set['Antibiotics']>0]=1
-            phar_set['Dobutamine'][phar_set['Dobutamine']>0]=1
-            phar_set['Milrinone'][phar_set['Milrinone']>0]=1
+            # phar_set['Antibiotics'][phar_set['Antibiotics']>0]=1
+            # phar_set['Dobutamine'][phar_set['Dobutamine']>0]=1
+            # phar_set['Milrinone'][phar_set['Milrinone']>0]=1
             
+            required_columns = ['Antibiotics', 'Dobutamine', 'Milrinone', 'Theophyllin', 'Fluid Bolus']
+
+      
+            for v in required_columns:
+                if v not in current_stay.columns:
+                    current_stay[v] = 0
+
+            phar_set = current_stay[required_columns].fillna(0).reset_index(drop=True)
+
+            phar_set['Antibiotics'] = (phar_set['Antibiotics'] > 0).astype(int)
+            phar_set['Dobutamine'] = (phar_set['Dobutamine'] > 0).astype(int)
+            phar_set['Milrinone'] = (phar_set['Milrinone'] > 0).astype(int)
 
             merged_lab_chart = pd.concat([forward_set, lab_result], axis = 1)
             merged_total = pd.concat([merged_lab_chart, phar_set], axis = 1)
