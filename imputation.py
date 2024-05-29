@@ -53,7 +53,7 @@ def Imputation(part_list):
             # lab up down phase
             lab_result = pd.DataFrame()
 
-            for lab_object in ['Creatinine', 'Lactate', 'Platelet_count', 'Bilirubin', 'INR']:
+            for lab_object in ['Creatinine', 'Lactate', 'Platelet_count', 'Bilirubin', 'INR', 'pH']:
             
                 lab_measure = lab_object
 
@@ -120,6 +120,15 @@ def Imputation(part_list):
             
             
         dir = f'tabular_records/csv_imputation/part-{parts}.csv'
+        
+        result['PP'] = result['ABPs'] - result['ABPd']
+        result = result.drop('Theophyllin', axis = 1)
+        
+        result['vaso'] = result['Dobutamine'] + result['Milrinone']
+        result['vasopressor'] = result['vaso'].apply(lambda x: 1 if not pd.isna(x) and x > 0 else 0)
+        
+        result = result.drop(['vaso', 'Dobutamine', 'Milrinone'], axis = 1)
+        
         result.to_csv(local+dir,index=False)
         print('--')
     print("[ SUCCESSFULLY SAVED TOTAL UNIT STAY DATA ]")
