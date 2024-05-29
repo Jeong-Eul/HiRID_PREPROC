@@ -2,6 +2,7 @@
 HiRID 전처리 과정 정리  
 tabularization.py: feature selection, tabularization  
 imputation.py: data imputation  
+aggregation_demographs.py: incorperate the separated parts and add demographic information
 
 ```python
 
@@ -19,5 +20,5 @@ for i in range(0, 250):
     
 data_preprocessing_pipeline(parts_list, 'hourly_intervals')
 imputation.Imputation(parts_list)
-
+aggregation_demographs.P_Aggregation_Demograph(parts_list)
 ```
