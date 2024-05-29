@@ -39,6 +39,17 @@ def Imputation(part_list):
             forward_set = forward_set.ffill()
             forward_set = forward_set.fillna(-100).reset_index(drop=True)
             forward_set['PEEP'] = current_stay['PEEP'].copy()
+            
+            # backward fill phase
+            
+            backward_set = current_stay[['Urine_output']]
+            backward_set = backward_set.bfill(limit=3)
+            backward_set = backward_set.fillna(-100).reset_index(drop=True)
+            
+            # final phase
+            
+            final_set = pd.concat([forward_set, backward_set], axis = 1)
+            
             # lab up down phase
             lab_result = pd.DataFrame()
 
@@ -102,7 +113,7 @@ def Imputation(part_list):
             phar_set['Dobutamine'] = (phar_set['Dobutamine'] > 0).astype(int)
             phar_set['Milrinone'] = (phar_set['Milrinone'] > 0).astype(int)
 
-            merged_lab_chart = pd.concat([forward_set, lab_result], axis = 1)
+            merged_lab_chart = pd.concat([final_set, lab_result], axis = 1)
             merged_total = pd.concat([merged_lab_chart, phar_set], axis = 1)
             
             result = pd.concat([result, merged_total], axis = 0)
