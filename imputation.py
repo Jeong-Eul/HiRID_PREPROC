@@ -6,6 +6,10 @@ import gc
 import os
 from tqdm import tqdm
 import warnings
+from imp import reload
+import outlier_removal
+reload(outlier_removal)
+
 pd.set_option('mode.chained_assignment',  None) 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -26,7 +30,7 @@ def Imputation(part_list):
         print(f'Part {parts} processing......')
 
         part = pd.read_csv(f'/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/csv_tab/part-{parts}.csv')
-            
+        
         result = pd.DataFrame()
 
         for stay in part.patientid.unique():
@@ -37,7 +41,6 @@ def Imputation(part_list):
             # forward fill phase
             forward_set = current_stay[['patientid', 'Time_since_ICU_admission', 'ABPd', 'ABPs', 'FiO2', 'HR', 'MAP', 'PaO2', 'Respiratory_rate', 'SpO2', 'Temperature']]
             forward_set = forward_set.ffill()
-            forward_set = forward_set.fillna(-100).reset_index(drop=True)
             forward_set['PEEP'] = current_stay['PEEP'].copy()
             
             # backward fill phase
@@ -49,6 +52,85 @@ def Imputation(part_list):
             # final phase
             
             final_set = pd.concat([forward_set, backward_set], axis = 1)
+            
+            
+            # outlier removal
+            final_set = outlier_removal.GETOUT(final_set, mode = 'V')
+            
+            # Derived variable
+            
+            final_set['FiO2_returns'] = final_set['FiO2'].pct_change() # 변동률
+            final_set['FiO2_max_3h'] = final_set['FiO2'].rolling(window=3).max()
+            final_set['FiO2_min_3h'] = final_set['FiO2'].rolling(window=3).min()
+            final_set['FiO2_5MA'] = final_set['FiO2'].rolling(window=5).mean()
+            final_set['FiO2_10MA'] = final_set['FiO2'].rolling(window=10).mean()
+            final_set['FiO2_20MA'] = final_set['FiO2'].rolling(window=20).mean()
+            
+            #상대 강도 지수
+            try:
+                delta = final_set['FiO2'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=3).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=3).mean()
+                rs = gain / loss
+                final_set['FiO2_RSI_3h'] = 100 - (100 / (1 + rs + 0.00000001))
+            except:
+                final_set['FiO2_RSI_3h'] = -100
+                
+            
+            
+            final_set['PaO2_returns'] = final_set['PaO2'].pct_change() # 변동률
+            final_set['PaO2_max_3h'] = final_set['PaO2'].rolling(window=3).max()
+            final_set['PaO2_min_3h'] = final_set['PaO2'].rolling(window=3).min()
+            final_set['PaO2_5MA'] = final_set['PaO2'].rolling(window=5).mean()
+            final_set['PaO2_10MA'] = final_set['PaO2'].rolling(window=10).mean()
+            final_set['PaO2_20MA'] = final_set['PaO2'].rolling(window=20).mean()
+            
+            try:
+                delta = final_set['PaO2'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=3).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=3).mean()
+                rs = gain / loss
+                final_set['PaO2_RSI_3h'] = 100 - (100 / (1 + rs + 0.00000001))
+            except:
+                final_set['PaO2_RSI_3h'] = -100
+            
+            final_set['MAP_returns'] = final_set['MAP'].pct_change() # 변동률
+            final_set['MAP_max_3h'] = final_set['MAP'].rolling(window=3).max()
+            final_set['MAP_min_3h'] = final_set['MAP'].rolling(window=3).min()
+            final_set['MAP_5MA'] = final_set['MAP'].rolling(window=5).mean()
+            final_set['MAP_10MA'] = final_set['MAP'].rolling(window=10).mean()
+            final_set['MAP_20MA'] = final_set['MAP'].rolling(window=20).mean()
+            
+            try:
+                delta = final_set['MAP'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=3).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=3).mean()
+                rs = gain / loss
+                final_set['MAP_RSI_3h'] = 100 - (100 / (1 + rs + 0.00000001))
+            except:
+                final_set['MAP_RSI_3h'] = -100
+            
+            final_set['Respiratory_rate_returns'] = final_set['Respiratory_rate'].pct_change() # 변동률
+            final_set['Respiratory_rate_max_3h'] = final_set['Respiratory_rate'].rolling(window=3).max()
+            final_set['Respiratory_rate_min_3h'] = final_set['Respiratory_rate'].rolling(window=3).min()
+            final_set['Respiratory_rate_5MA'] = final_set['Respiratory_rate'].rolling(window=5).mean()
+            final_set['Respiratory_rate_10MA'] = final_set['Respiratory_rate'].rolling(window=10).mean()
+            final_set['Respiratory_rate_20MA'] = final_set['Respiratory_rate'].rolling(window=20).mean()
+            
+            
+            try:
+                delta = final_set['Respiratory_rate'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=3).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=3).mean()
+                rs = gain / loss
+                final_set['Respiratory_rate_RSI_3h'] = 100 - (100 / (1 + rs + 0.00000001))
+            except:
+                final_set['Respiratory_rate_RSI_3h'] = -100
+            
+            final_set['PP'] = final_set['ABPs'] - final_set['ABPd']
+            
+            final_set = final_set.fillna(-100).reset_index(drop=True)
+            
             
             # lab up down phase
             lab_result = pd.DataFrame()
@@ -91,7 +173,7 @@ def Imputation(part_list):
                     current_lab[f'{lab_measure}_up'] = 0
                 
                 lab_result = pd.concat([lab_result, current_lab[[f'{lab_measure}', f'{lab_measure}_up']]], axis = 1).reset_index(drop=True)
-            
+                
             # pharmacuetical phase
             # phar_set = current_stay[['Antibiotics', 'Dobutamine', 'Milrinone', 'Theophyllin', 'Fluid Bolus']]
             # phar_set = phar_set.fillna(0).reset_index(drop=True)
@@ -112,6 +194,8 @@ def Imputation(part_list):
             phar_set['Antibiotics'] = (phar_set['Antibiotics'] > 0).astype(int)
             phar_set['Dobutamine'] = (phar_set['Dobutamine'] > 0).astype(int)
             phar_set['Milrinone'] = (phar_set['Milrinone'] > 0).astype(int)
+            
+            lab_result = outlier_removal.GETOUT(lab_result, mode = 'L')
 
             merged_lab_chart = pd.concat([final_set, lab_result], axis = 1)
             merged_total = pd.concat([merged_lab_chart, phar_set], axis = 1)
@@ -121,7 +205,7 @@ def Imputation(part_list):
             
         dir = f'tabular_records/csv_imputation/part-{parts}.csv'
         
-        result['PP'] = result['ABPs'] - result['ABPd']
+        
         result = result.drop('Theophyllin', axis = 1)
         
         result['vaso'] = result['Dobutamine'] + result['Milrinone']
