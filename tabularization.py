@@ -60,8 +60,8 @@ def tabularization(part_num, valid_stay_ids, selected):
         val['patientid'] = hid
         val['Time_since_ICU_admission'] = val.index
         
-        if not os.path.exists(local+"tabular_records/csv_tab/"):
-            os.makedirs(local+"tabular_records/csv_tab/")
+        if not os.path.exists(local+"tabular_records/csv_tab_10/"):
+            os.makedirs(local+"tabular_records/csv_tab_10/")
         
         if(part_csv.empty):
             part_csv=val
@@ -69,13 +69,13 @@ def tabularization(part_num, valid_stay_ids, selected):
             part_csv=pd.concat([part_csv,val],axis=0)
         
         #[ ====== Save temporal data to csv ====== ]
-        dir = f'tabular_records/csv_tab/part-{part_num}.csv'
+        dir = f'tabular_records/csv_tab_10/part-{part_num}.csv'
         part_csv.to_csv(local+dir,index=False)
         
     print("[ SUCCESSFULLY SAVED TOTAL UNIT STAY DATA ]")
     
 general = pd.read_csv('/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/general_table.csv')
-feature_list = pd.read_csv('/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/feature_summary.csv')
+feature_list = pd.read_csv('/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/feature_summary_shock.csv')
 
 parts_list=[]
 for i in range(0, 250):
@@ -116,10 +116,10 @@ def data_preprocessing_pipeline(part_list, resample_mode):
         selected_merged[['start_days', 'dummy','start_hours']] = selected_merged['Time_since_ICU_admission'].astype('str').str.split(' ', -1, expand=True)
         selected_merged[['start_hours','min','sec']] = selected_merged['start_hours'].str.split(':', -1, expand=True)
 
-        resample_mode ='hourly_intervals'
+        resample_mode ='10min_intervals'
 
         if resample_mode == '10min_intervals':
-            selected_merged['start_time'] = pd.to_numeric(selected_merged['start_days'])*24*60+pd.to_numeric(selected_merged['start_hours'])*60 + (selected_merged['min'].astype('int')//10)*10
+            selected_merged['start_time'] = pd.to_numeric(selected_merged['start_days'])*24*60 + pd.to_numeric(selected_merged['start_hours'])*60 + (selected_merged['min'].astype('int')//10)*10
         elif resample_mode == 'hourly_intervals':
             selected_merged['start_time'] = pd.to_numeric(selected_merged['start_days'])*24+pd.to_numeric(selected_merged['start_hours'])
 
@@ -133,12 +133,12 @@ def data_preprocessing_pipeline(part_list, resample_mode):
         filtered_selected = selected_merged[selected_merged['patientid'].isin(filter_los)]
 
 
-        # Pao2, Fio2, PEEP가 1번이라도 측정되지 않은 stay 제거하기
+        # ABPd, ABPs, Lactate 1번이라도 측정되지 않은 stay 제거하기
 
         filtered_selected=filtered_selected.sort_values(by=['start_time'])
 
         # Specify the item_ids we are interested in
-        required_item_ids = {'PaO2', 'FiO2', 'PEEP'}
+        required_item_ids = {'ABPd', 'ABPs', 'Lactate'}
 
         # Find the stay_ids that have all the required item_ids at least once
         valid_stay_ids = filtered_selected[filtered_selected['variableid'].isin(required_item_ids)].groupby('patientid')['variableid'].nunique()
