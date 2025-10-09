@@ -1,6 +1,6 @@
 # HiRID data pre-processing
 
-Repository for the HiRID data pre-processing
+Repository for the HiRID data pre-processing (for irregular setting = imputation was not conducted)
 
 [[Original Paper](https://www.nature.com/articles/s41591-020-0789-4)], [[Dataset Download](https://physionet.org/content/hirid/1.1.1/)]
 
