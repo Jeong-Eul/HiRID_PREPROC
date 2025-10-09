@@ -536,16 +536,16 @@ if __name__ == '__main__':
     
     print('START: HIRID-PREPROC--')
     
-    # print('Step 1. : Aggregation')
-    # start = time.time()
+    print('Step 1. : Aggregation')
+    start = time.time()
     
-    # for i in tqdm(range(0, 250)):
-    #     try:
-    #         Aggregation(args, i)
-    #     except:
-    #         pass
+    for i in tqdm(range(0, 250)):
+        try:
+            Aggregation(args, i)
+        except:
+            pass
         
-    # print('Step 1 END: time consume:', time.time()-start)
+    print('Step 1 END: time consume:', time.time()-start)
     
     
     print('Step 2. : Annotation & Labeling')
