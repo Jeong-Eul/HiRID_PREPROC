@@ -227,7 +227,7 @@ def AnnotationEpisodes(args, part_example):
 
             # condition
             cond_nonshock = (window["MAP"] > 65) & (window["vasopressor_prev"] == 0) & (window["Lactate_interp"] <= 2)
-            cond_shock = (window["MAP"] <= 65) | ((window["vasopressor_prev"] == 1) & (window["Lactate_interp"] >= 2))
+            cond_shock = ((window["MAP"] <= 65) | ((window["vasopressor_prev"] == 1)) & (window["Lactate_interp"] >= 2))
 
             # duration
             def duration(cond):
@@ -560,5 +560,39 @@ if __name__ == '__main__':
             pass
         
     print('Step 2 END: time consume:', time.time()-start)
+    
+    
+    print('Step 3. : Integrate seperated parts into one dataframe (demographic info was included)')
+    start = time.time()
+    parts = []
+    general = pd.read_csv(args.general_path, usecols=['patientid', 'sex', 'age'])
+    for i in tqdm(range(0, 250)):
+        try:
+            part_example = pd.read_csv(args.label_save_pth+f"part-{i}.csv")
+            demo = pd.merge(part_example, general, how = 'left', on='patientid')
+            
+            parts.append(demo)
+            
+        except:
+            pass
+        
+    result = pd.concat(parts, ignore_index=True)    
+    result['sex'] = result['sex'].replace({'M' : 1, 'F':0})
+    result.reset_index(drop=True, inplace=True)
+    
+    result = result.rename(columns = {'sex':'Sex', 'age':'Age'})
+    
+    idx = result[result['is_mask']==1].index
+    result.loc[idx, 'Sex'] = 0
+    result.loc[idx, 'Age'] = 0
+    
+    print('======= Summary =======')
+    print('Num of obs: ', len(result))
+    print('num of patients: ', result.patientid.nunique())
+    print('Male patients: ', len(result[result['Sex'] == 1]))
+    print('Female patients: ', len(result[result['Sex'] == 0]))
+    print('========================')
+        
+    print('Step 3 END: time consume:', time.time()-start)
     
     print('FINISH: HIRID-PREPROC--')
