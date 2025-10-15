@@ -43,6 +43,7 @@ python processing_hirid.py
     --pharma_feature_path [your path]
     --save_pth [your path]
     --labeled_save_pth [your path] 
+    --Action default=True  
     --min_seq_len [seq length minimum] 
     --max_seq_len [seq length maximum] 
     --prediction_window [prediction window (hour)]
@@ -56,6 +57,7 @@ python processing_hirid.py
 - Specify the directory where part-wise aggregation results will be saved (save_pth). ;
 - Specify the directory where part-wise annotation and labeling results will be saved (labeled_save_pth). ;
 - You can define the length of stay range for patients to be included in the analysis using start_los and end_los.  ;
+- The argument Action is treatment behavior. for example, if vasopressor volumn is higher than previous time point, action is "up". if Action is False, treatment parameter is saved as binary indicator  ;
 
 if you start with default setting, use bellow command:
 
