@@ -23,25 +23,28 @@ def get_args_parser():
     parser.add_argument('--min_seq_len', default=3, type=int)
     parser.add_argument('--max_seq_len', default=96, type=int)
     parser.add_argument('--prediction_window', default=8, type=int, help='hour')
-
+    
     # Dataset parameters
-    parser.add_argument('--observation_path', default='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/observation_tables/csv/part-', type=str,
+    parser.add_argument('--observation_path', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/observation_tables/csv/part-', type=str,
                         help='observation(vital, lab) path')
-    parser.add_argument('--pharma_path', default='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/pharma_records/csv/part-', type=str,
+    parser.add_argument('--pharma_path', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/pharma_records/csv/part-', type=str,
                         help='pharmacuetical path')
-    parser.add_argument('--general_path', default='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/general_table.csv', type=str,
+    parser.add_argument('--general_path', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/general_table.csv', type=str,
                         help='demographic path')
+    parser.add_argument('--action', default=True, help='action trend')
     
     # feature information
-    parser.add_argument('--obs_feature_path', default='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/hirid_vital_lab_id.csv', type=str,
+    parser.add_argument('--obs_feature_path', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/hirid_vital_lab_id.csv', type=str,
                         help='obs_feature_path')
-    parser.add_argument('--pharma_feature_path', default='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/hirid_pharma_id.csv', type=str,
+    parser.add_argument('--pharma_feature_path', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/hirid_pharma_id.csv', type=str,
                         help='pharma_feature_path')
     
     # save path
-    parser.add_argument('--save_pth', default='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251008/', type=str,
+    parser.add_argument('--save_pth', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251015/', type=str,
                         help='refined dataset save path')
-    parser.add_argument('--label_save_pth', default='/Users/DAHS/Desktop/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251009/', type=str,
+    
+    parser.add_argument('--label_save_pth', 
+                        default='C:/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251016/', type=str,
                         help='labeled dataset save path')
     
     return parser.parse_args()
@@ -85,6 +88,26 @@ def resampling(df, start_los, end_los):
     filtered_selected=filtered_selected.sort_values(by=['patientid', 'Anchor_Time'])
     
     return filtered_selected
+
+def detect_vasopressor_trend(arr):
+    arr = np.array(arr, dtype=np.float32, copy=True)
+    arr = np.asarray(arr, dtype=np.float32)
+    diff = np.diff(arr)
+
+    state = np.full_like(arr, fill_value='maintain', dtype=object)
+    state[np.isnan(arr)] = 'stop'
+
+    valid = ~np.isnan(arr[:-1]) & ~np.isnan(arr[1:])
+    state[1:][valid & (diff > 0)] = 'up'
+    state[1:][valid & (diff < 0)] = 'down'
+    state[1:][valid & (diff == 0)] = 'maintain'
+
+    start_mask = np.isnan(arr[:-1]) & ~np.isnan(arr[1:])
+    state[1:][start_mask] = 'up'
+
+    state[0] = 'stop' if np.isnan(arr[0]) else 'up'
+
+    return state
 
 def adm_duration(pharm):
         global refine, inf
@@ -226,7 +249,7 @@ def AnnotationEpisodes(args, part_example):
                 continue
 
             # condition
-            cond_nonshock = (window["MAP"] > 65) & (window["vasopressor_prev"] == 0) & (window["Lactate_interp"] <= 2)
+            cond_nonshock = (window["MAP"] > 65) & (window["vasopressor_prev"] == 0) & (window["Lactate_interp"] < 2)
             cond_shock = ((window["MAP"] <= 65) | ((window["vasopressor_prev"] == 1)) & (window["Lactate_interp"] >= 2))
 
             # duration
@@ -326,7 +349,7 @@ def Labeling(args, parts, labeled_part):
             episode = episode.drop(['endpoint_window'], axis = 1)
         
         else:
-            pass
+            episode['shock_next_8h'] = 0
 
         if len(episode) < args.max_seq_len:
             pad_length = args.max_seq_len - len(episode)
@@ -477,39 +500,44 @@ def Aggregation(args, parts):
     merged = pd.concat([chart_copy[column],pharm_copy[column]], axis = 0)
     
     feat = set(feature_obs.Name.unique()) | set(['vasopressor'])
-    part_csv = pd.DataFrame() 
-
-
+    part_csv = pd.DataFrame()
+    
     for hid in valid_stay_ids:
-
+        
         df2 = merged[merged['patientid'] == hid]
         val = df2.pivot_table(index='pivot_time', columns='variableid', values='value').reset_index()
         val = val.rename(columns={'pivot_time': 'Time'})
         val['patientid'] = hid
 
+        feat_df=pd.DataFrame(columns=list(set(feat)-set(val.columns)))
+        val=pd.concat([val,feat_df],axis=1)
+
+        # Additional processing
+
+        # 1. vasopressor
+        
+        if args.action:
+            val['vasopressor_vol'] = np.array(val['vasopressor'], dtype=np.float32, copy=True)
+            val['action'] = detect_vasopressor_trend(val['vasopressor_vol'].values)
+            val['vasopressor_vol'].fillna(0, inplace=True)
+        
+        val['vasopressor'].fillna(0, inplace=True)
+        idx = val[val['vasopressor'] > 0].index
+        val.loc[idx, 'vasopressor'] = 1
+
+        # 2. MAP
+        val['MAP'] = (val['DBP']*2 + val['SBP'])/3
+        
         if part_csv.empty:
             part_csv = val
         else:
             part_csv = pd.concat([part_csv, val], axis=0)
 
-        feat_df=pd.DataFrame(columns=list(set(feat)-set(part_csv.columns)))
-        part_csv=pd.concat([part_csv,feat_df],axis=1)
-
-        # Additional processing
-
-        # 1. vasopressor
-        part_csv['vasopressor'].fillna(0, inplace=True)
-        idx = part_csv[part_csv['vasopressor'] > 0].index
-        part_csv.loc[idx, 'vasopressor'] = 1
-
-        # 2. MAP
-        part_csv['MAP'] = (part_csv['DBP']*2 + part_csv['SBP'])/3
-
-        #[ ====== Save temporal data to csv ====== ]
-        if not os.path.exists(args.save_pth):
-            os.makedirs(args.save_pth)
-        file_path = os.path.join(args.save_pth, f"part-{parts}.csv")
-        part_csv.to_csv(file_path,index=False)
+    #[ ====== Save temporal data to csv ====== ]
+    if not os.path.exists(args.save_pth):
+        os.makedirs(args.save_pth)
+    file_path = os.path.join(args.save_pth, f"part-{parts}.csv")
+    part_csv.to_csv(file_path,index=False)
 
 
 if __name__ == '__main__':
@@ -530,6 +558,7 @@ if __name__ == '__main__':
     # --end_los [los max (hour)]
     
     args = get_args_parser()
+
     
     obs_col = ['patientid', 'datetime','value', 'variableid']
     pharm_col = ['patientid', 'givenat','fluidamount_calc', 'pharmaid', 'infusionid', 'recordstatus']
@@ -585,6 +614,8 @@ if __name__ == '__main__':
     idx = result[result['is_mask']==1].index
     result.loc[idx, 'Sex'] = 0
     result.loc[idx, 'Age'] = 0
+    
+    result.to_csv('HiRID.csv', index=False)
     
     print('======= Summary =======')
     print('Num of obs: ', len(result))
