@@ -57,7 +57,7 @@ python processing_hirid.py
 - Specify the directory where part-wise aggregation results will be saved (save_pth). ;
 - Specify the directory where part-wise annotation and labeling results will be saved (labeled_save_pth). ;
 - You can define the length of stay range for patients to be included in the analysis using start_los and end_los.  ;
-- The argument Action is treatment behavior. for example, if vasopressor volumn is higher than previous time point, action is "up". if Action is False, treatment parameter is saved as binary indicator  ;
+- The argument Action is treatment behavior. for example, if vasopressor volumn is higher than previous time point, action is "up" (Different option is concluded: "maintain", "down", "stop"). if Action is False, treatment parameter is saved as binary indicator  ;
 
 if you start with default setting, use bellow command:
 
