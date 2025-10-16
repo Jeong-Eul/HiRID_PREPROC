@@ -31,7 +31,7 @@ def get_args_parser():
                         help='pharmacuetical path')
     parser.add_argument('--general_path', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/general_table.csv', type=str,
                         help='demographic path')
-    parser.add_argument('--action', default=True, help='action trend')
+    parser.add_argument('--action', default=False, help='action trend')
     
     # feature information
     parser.add_argument('--obs_feature_path', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/reference_data/hirid_vital_lab_id.csv', type=str,
@@ -40,11 +40,11 @@ def get_args_parser():
                         help='pharma_feature_path')
     
     # save path
-    parser.add_argument('--save_pth', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251015/', type=str,
+    parser.add_argument('--save_pth', default='/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251008/', type=str,
                         help='refined dataset save path')
     
     parser.add_argument('--label_save_pth', 
-                        default='C:/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251016/', type=str,
+                        default='C:/Users/DAHS/Desktop/Personal_Research/Dataset/hirid-a-high-time-resolution-icu-dataset-1.1.1/raw_stage/tabular_records/20251009/', type=str,
                         help='labeled dataset save path')
     
     return parser.parse_args()
@@ -356,6 +356,7 @@ def Labeling(args, parts, labeled_part):
             pad_rows = pd.DataFrame(0, index = range(pad_length), columns = episode.columns)
             pad_rows['is_mask'] = 1
             pad_rows['patientid'] = episode.patientid.unique()[0]
+            pad_rows['episodeid'] = episode.episodeid.unique()[0]
             
             episode = pd.concat([episode, pad_rows], axis = 0)
 
@@ -615,7 +616,7 @@ if __name__ == '__main__':
     result.loc[idx, 'Sex'] = 0
     result.loc[idx, 'Age'] = 0
     
-    result.to_csv('HiRID.csv', index=False)
+    result.to_csv('HiRID_binary.csv', index=False)
     
     print('======= Summary =======')
     print('Num of obs: ', len(result))
